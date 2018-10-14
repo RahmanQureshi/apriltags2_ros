@@ -18,7 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
 )
 
-find_package(Eigen REQUIRED)
+find_package(Eigen3)
 find_package(OpenCV REQUIRED)
 
 # Set the build type.  Options are:
@@ -33,7 +33,7 @@ add_definitions (-Wall -O3)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -funsafe-loop-optimizations -fsee -funroll-loops -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-signed-zeros ")
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES x86_64 OR x86_32)
-  message("enabling msse2 for x86_64 or x86_32 architecture")
+#  message("enabling msse2 for x86_64 or x86_32 architecture")
   #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -msse2 ")
 endif(${CMAKE_SYSTEM_PROCESSOR} MATCHES x86_64 OR x86_32)
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES arm)
@@ -44,7 +44,7 @@ endif(${CMAKE_SYSTEM_PROCESSOR} MATCHES arm)
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS apriltags2 apriltags2_msgs geometry_msgs image_transport roscpp sensor_msgs std_msgs message_runtime cv_bridge tf
-  DEPENDS Eigen OpenCV
+  DEPENDS EIGEN3 OpenCV
 )
 
 ###########
@@ -53,14 +53,14 @@ catkin_package(
 
 include_directories(include
   ${catkin_INCLUDE_DIRS}
-  ${Eigen_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
 )
 
 add_library(common src/tag_detector.cpp src/tag_settings.cpp)
 target_link_libraries(common
   ${catkin_LIBRARIES}
-  ${Eigen_LIBRARIES}
+  ${EIGEN3_LIBRARIES}
   ${OpenCV_LIBRARIES}
 )
 

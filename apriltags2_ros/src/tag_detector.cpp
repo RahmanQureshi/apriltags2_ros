@@ -163,7 +163,7 @@ namespace apriltags2_ros {
             detection_msg.p.push_back(p4);
             detection_msg.H.ncols = detection->H->ncols;
             detection_msg.H.nrows = detection->H->nrows;
-            for(int i = 0; i < detection->H->ncols * detection->H->nrows; ++i) {
+            for(unsigned i = 0; i < detection->H->ncols * detection->H->nrows; ++i) {
                 detection_msg.H.data.push_back(detection->H->data[i]);
             }
             detectionArray_msg.detections.push_back(detection_msg);
@@ -202,13 +202,14 @@ namespace apriltags2_ros {
                 double s = tag_bundle_description.memberSize(id) / 2;
                 addObjectPoints(s, tag_bundle_description.memberT_oi(id), bundleObjectPoints[bundlename]);
 
-                matd_t H;
-                H.nrows = detection.H.nrows;
-                H.ncols = detection.H.ncols;
-                for (unsigned i = 0; i < H.ncols * H.nrows; ++i)
-                    H.data[i] = detection.H.data[i];
+                matd_t* H = matd_create(detection.H.nrows, detection.H.ncols);
+                H->nrows = detection.H.nrows;
+                H->ncols = detection.H.ncols;
+                for (unsigned i = 0; i < H->ncols *H->nrows; ++i)
+                    H->data[i] = detection.H.data[i];
 
-                addImagePoints(H, bundleImagePoints[bundlename]);
+                addImagePoints(*H, bundleImagePoints[bundlename]);
+                matd_destroy(H);
             }
 
             // Find this tag's description among the standalone tags
@@ -239,12 +240,14 @@ namespace apriltags2_ros {
             vector<cv::Point2d> standaloneTagImagePoints;
 
             addObjectPoints(tagsize / 2, cv::Matx44d::eye(), standaloneTagObjectPoints);
-            matd_t H;
-            H.nrows = detection.H.nrows;
-            H.ncols = detection.H.ncols;
-            for (unsigned i = 0; i < H.ncols * H.nrows; ++i)
-                H.data[i] = detection.H.data[i];
-            addImagePoints(H, standaloneTagImagePoints);
+            matd_t* H = matd_create(detection.H.nrows, detection.H.ncols);
+            H->nrows = detection.H.nrows;
+            H->ncols = detection.H.ncols;
+            for (unsigned i = 0; i < H->ncols *H->nrows; ++i)
+                H->data[i] = detection.H.data[i];
+
+            addImagePoints(*H, standaloneTagImagePoints);
+            matd_destroy(H);
 
             Eigen::Matrix4d transform = getRelativeTransform(standaloneTagObjectPoints, standaloneTagImagePoints, fx, fy, cx, cy);
             Eigen::Matrix3d rot = transform.block(0, 0, 3, 3);
@@ -293,7 +296,7 @@ namespace apriltags2_ros {
 
         // If set, publish the transform /tf topic
         if (publish_tf) {
-            for (int i = 0; i < detectionPoseArray.detections.size(); ++i) {
+            for (unsigned i = 0; i < detectionPoseArray.detections.size(); ++i) {
                 geometry_msgs::PoseStamped pose;
                 pose.pose = detectionPoseArray.detections[i].pose.pose.pose;
                 pose.header = detectionPoseArray.detections[i].pose.header;

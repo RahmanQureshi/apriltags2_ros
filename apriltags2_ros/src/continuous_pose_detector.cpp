@@ -59,10 +59,6 @@ void ContinuousPoseDetector::findTransformOpticalFlow(CvImageConstPtr& before, C
     cv::TermCriteria termcrit(cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS, 20, 0.03);
     cv::Size subPixWinSize(10,10), winSize(31,31), pyramidWinSize(51, 51);
 
-    uint64_t t0, t01, t1, t2, t3;
-
-    t0 = ros::Time::now().toNSec();
-
     cv::Mat grayBefore, grayAfter;
     vector<cv::Mat> pyramidBefore, pyramidAfter;
     cv::cvtColor(before->image, grayBefore, cv::COLOR_BGR2GRAY );
@@ -78,8 +74,6 @@ void ContinuousPoseDetector::findTransformOpticalFlow(CvImageConstPtr& before, C
         cv::buildOpticalFlowPyramid(grayAfter, pyramidAfter, pyramidWinSize, 3);
     }
 
-    t01 = ros::Time::now().toNSec();
-
     points[0].clear();
     points[1].clear();
     for (const auto &detection : detectionArray->detections) {
@@ -91,16 +85,12 @@ void ContinuousPoseDetector::findTransformOpticalFlow(CvImageConstPtr& before, C
 
     cv::cornerSubPix(grayBefore, points[0], subPixWinSize, cv::Size(-1,-1), termcrit);
 
-    t1 = ros::Time::now().toNSec();
-
     vector<uchar> status;
     vector<float> err;
     if (pyramid)
         cv::calcOpticalFlowPyrLK(pyramidBefore, pyramidAfter, points[0], points[1], status, err, winSize, 3, termcrit);
     else
         cv::calcOpticalFlowPyrLK(grayBefore, grayAfter, points[0], points[1], status, err, winSize, 3, termcrit);
-
-    t2 = ros::Time::now().toNSec();
 
     assert(points[0].size() == points[1].size());
 
@@ -118,10 +108,6 @@ void ContinuousPoseDetector::findTransformOpticalFlow(CvImageConstPtr& before, C
     }
     detectionTransformArray->from = before->header.stamp;
     detectionTransformArray->to = after->header.stamp;
-
-    t3 = ros::Time::now().toNSec();
-
-//    cout << (t01 - t0)/1000 << " " << (t1 - t01)/1000 << " " << (t2 - t1)/1000 << " " << (t3 - t2)/1000 << endl;
 }
 
 void ContinuousPoseDetector::imageCallback( const sensor_msgs::ImageConstPtr& image_rect, const sensor_msgs::CameraInfoConstPtr& camera_info) {
@@ -138,9 +124,6 @@ void ContinuousPoseDetector::imageCallback( const sensor_msgs::ImageConstPtr& im
 		ROS_ERROR("cv_bridge exception: %s", e.what());
 		return;
 	}
-
-	uint64_t t1, t2, t3, t4, t5, t6;
-	t1 = ros::Time::now().toNSec();
 
     // 1. Find the pose transformation using optical flow
     if (!detectionArrayCorrectedList.empty() && imageList.size() >= 2) {
@@ -171,8 +154,6 @@ void ContinuousPoseDetector::imageCallback( const sensor_msgs::ImageConstPtr& im
         }
     }
 
-    t2 = ros::Time::now().toNSec();
-
     // 2. Find the corrected pose using the past poses
     if (!detectionArrayList.empty()) {
         ros::Time image_time = cv_image->header.stamp;
@@ -189,22 +170,16 @@ void ContinuousPoseDetector::imageCallback( const sensor_msgs::ImageConstPtr& im
 
         detectionArrayCorrectedList.push_back(dArrayCurrent);
 
-        t3 = ros::Time::now().toNSec();
-
         // Draw the corrected pose on the image
         drawDetections(dArrayCurrent, cv_image_drawn);
         if (draw_tag_detections_image) {
             tag_detections_image_publisher.publish(cv_image_drawn->toImageMsg());
         }
 
-        t4 = ros::Time::now().toNSec();
-
         // Find the tag poses
         AprilTagDetectionPoseArray poseArray;
         findTagPose(poseArray, dArrayCurrent);
         tag_detections_publisher.publish(poseArray);
-
-        t5 = ros::Time::now().toNSec();
     }
 
     // 3. Delete old stuff from the lists
@@ -216,10 +191,6 @@ void ContinuousPoseDetector::imageCallback( const sensor_msgs::ImageConstPtr& im
     detectionArrayList.remove_if([&too_old](AprilTagDetectionArray& det) {return det.header.stamp < too_old; });
     detectionArrayCorrectedList.remove_if([&too_old](AprilTagDetectionArray& det) {return det.header.stamp < too_old; });
     detectionArrayTransformList.remove_if([&too_old](AprilTagDetectionTransformArray& det) {return det.to < too_old; });
-
-    t6 = ros::Time::now().toNSec();
-
-    cout << "Queue sizes: " << imageList.size() << " " << detectionArrayList.size() << " " << detectionArrayCorrectedList.size() << " " << detectionArrayTransformList.size() << " | " << (t2 - t1)/1000 << " " << (t3 - t2)/1000 << " " << (t4 - t3)/1000 << " " << (t5 - t4)/1000 << " " << (t6 - t5)/1000 << endl;
 }
 
 void ContinuousPoseDetector::location2DCallback(const apriltags2_msgs::AprilTagDetectionArrayConstPtr detectionArray) {
